@@ -18,9 +18,19 @@ static int is_boundary(char c) {
 static void clear(tty_interface_t *state) {
 	tty_t *tty = state->tty;
 
+	int prompt_num_lines = 0;
+	int iterator = 0;
+	while (state->options->prompt[iterator] != '\0') {
+		if (state->options->prompt[iterator] == '\n')
+			prompt_num_lines++;
+		iterator++;
+	}
+
+	if (prompt_num_lines)
+		tty_moveup(tty, prompt_num_lines);
 	tty_setcol(tty, 0);
 	size_t line = 0;
-	while (line++ < state->options->num_lines + (state->options->show_info ? 1 : 0)) {
+	while (line++ < state->options->num_lines + (state->options->show_info ? 1 : 0) + prompt_num_lines) {
 		tty_newline(tty);
 	}
 	tty_clearline(tty);
@@ -91,6 +101,16 @@ static void draw(tty_interface_t *state) {
 		}
 	}
 
+	int prompt_num_lines = 0;
+	int iterator = 0;
+	while (state->options->prompt[iterator] != '\0') {
+		if (state->options->prompt[iterator] == '\n')
+			prompt_num_lines++;
+		iterator++;
+	}
+
+	if (prompt_num_lines)
+		tty_moveup(tty, prompt_num_lines);
 	tty_setcol(tty, 0);
 	tty_printf(tty, "%s%s", options->prompt, state->search);
 	tty_clearline(tty);
@@ -109,8 +129,8 @@ static void draw(tty_interface_t *state) {
 		}
 	}
 
-	if (num_lines + options->show_info)
-		tty_moveup(tty, num_lines + options->show_info);
+	if (num_lines + options->show_info + prompt_num_lines)
+		tty_moveup(tty, num_lines + options->show_info + prompt_num_lines);
 
 	tty_setcol(tty, 0);
 	fputs(options->prompt, tty->fout);
@@ -372,6 +392,12 @@ static void handle_input(tty_interface_t *state, const char *s, int handle_ambig
 }
 
 int tty_interface_run(tty_interface_t *state) {
+	int iterator = 0;
+	while (state->options->prompt[iterator] != '\0') {
+		if (state->options->prompt[iterator] == '\n')
+			tty_newline(state->tty);
+		iterator++;
+	}
 	draw(state);
 
 	for (;;) {
